@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ETWD Water Bill Comparison Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    body > * { width: 100%; }
+
+    [role="tooltip"], .tooltip, [data-tooltip], [class*="tippy"], .echarts-tooltip {
+      max-width: 90vw !important;
+      overflow-wrap: break-word !important;
+      word-wrap: break-word !important;
+      white-space: normal !important;
+    }
+
+    svg { max-width: 100%; overflow: visible; }
+
+    div, section, article, figure, main {
+      overflow: hidden;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    canvas { max-width: 100%; }
+
+    @media (max-width: 768px) {
+      body, html { overflow-x: hidden; max-width: 100vw; }
+    }
+
+    @page { margin: 0; }
+
+    @media print {
+      body { background: #fff !important; color: #000 !important; padding: 12mm !important; margin: 0 !important; }
+      * { color-adjust: exact !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    .calc-wrap {
+      max-width: 700px;
+      margin: 0 auto;
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, .12);
+    }
+
+    .header-bar {
+      background: #16478E;
+      color: #fff;
+      text-align: center;
+      padding: 14px 16px;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+
+    .inputs-section { padding: 20px 24px 12px; overflow: visible; }
+
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 14px;
+      overflow: visible;
+    }
+
+    .input-group { flex: 1 1 200px; min-width: 140px; overflow: visible; }
+    .input-group.third { flex: 1 1 140px; min-width: 120px; }
+
+    .input-group label {
+      display: block;
+      font-weight: 700;
+      font-size: 12px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .input-group select,
+    .input-group input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #c5c9ce;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #333;
+      background: #fff;
+    }
+
+    .input-group select:focus,
+    .input-group input:focus {
+      outline: 2px solid #16478E;
+      outline-offset: 1px;
+      border-color: #16478E;
+      box-shadow: 0 0 0 2px rgba(22, 71, 142, .15);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 0;
+      background: #16478E;
+      color: #fff;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      z-index: 10000;
+    }
+    .skip-link:focus { top: 0; }
+
+    .input-desc {
+      font-size: 10px;
+      color: #777;
+      margin-top: 3px;
+      line-height: 1.3;
+    }
+
+    .info-bar {
+      background: #1AB8CE;
+      color: #000;
+      text-align: center;
+      padding: 10px 20px;
+      font-size: 12px;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+
+    .budget-bar { display: none; }
+
+    .charts-section { padding: 20px 24px 0; }
+
+    .charts-half-title {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #16478E;
+      margin-bottom: 10px;
+    }
+
+    /* Comparison Table */
+    .table-section { padding: 16px 24px 24px; }
+
+    .bill-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .bill-table thead tr th {
+      background: #16478E;
+      color: #fff;
+      font-weight: 700;
+      padding: 9px 10px;
+      font-size: 12px;
+      letter-spacing: .3px;
+    }
+
+    .bill-table thead tr th:not(:first-child) { text-align: right; }
+
+    .bill-table caption {
+      background: #16478E;
+      color: #fff;
+      font-weight: 700;
+      padding: 9px 10px;
+      font-size: 12px;
+      letter-spacing: .3px;
+      text-align: left;
+    }
+
+    .section-header th {
+      font-weight: 700;
+      color: #16478E;
+      padding-top: 10px !important;
+      padding-bottom: 4px !important;
+      border-bottom: none !important;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      text-align: left;
+    }
+
+    .bill-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
+      color: #333;
+    }
+
+    .bill-table td:not(:first-child) {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .section-header td {
+      font-weight: 700;
+      color: #16478E;
+      padding-top: 10px !important;
+      padding-bottom: 4px !important;
+      border-bottom: none !important;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .bill-table .indent { padding-left: 22px; }
+    .bill-table .indent2 { padding-left: 36px; }
+
+    .subtotal-row td {
+      font-weight: 700;
+      border-top: 1px solid #c5c9ce;
+      border-bottom: none !important;
+      padding-top: 7px !important;
+    }
+
+    .total-row td {
+      font-weight: 700;
+      background: #dce8f7;
+      color: #16478E;
+      font-size: 13.5px;
+      padding: 9px 10px !important;
+      border-top: 2px solid #16478E;
+      border-bottom: none !important;
+    }
+
+    .bill-table tbody .change-col { background: #eef2f7; color: #333; }
+    .bill-table thead .change-col { background: #16478E; color: #fff; }
+
+    .change-pos { color: #000 !important; font-weight: 700; }
+    .change-neg { color: #067a50 !important; font-weight: 700; }
+
+    .total-row .change-col { background: #c8d9ee; color: #16478E; }
+    .total-row .change-pos { color: #000 !important; font-weight: 700; }
+    .total-row .change-neg { color: #067a50 !important; font-weight: 700; }
+
+    .divider-row td { padding: 0 !important; border: none !important; }
+    .divider-row td hr { margin: 2px 0; border: none; border-top: 1px solid #ddd; }
+
+    .tier-row { color: #555; }
+    .hidden-row { display: none; }
+
+    .footer-bar {
+      background: #f8f8f8;
+      border-top: 1px solid #e0e0e0;
+      padding: 14px 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .footer-bar a {
+      color: #16478E;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .footer-bar a:hover { text-decoration: underline; }
+
+    @media (max-width: 520px) {
+      .input-group { flex: 1 1 100%; }
+      .bill-table { font-size: 11px; }
+      .bill-table td { padding: 5px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div class="calc-wrap">
+    <h1 class="header-bar">ETWD Water Bill Comparison Calculator</h1>
+
+    <div class="inputs-section" id="main-content">
+      <div class="input-row">
+        <div class="input-group">
+          <label for="meterSize">Meter Size</label>
+          <select id="meterSize" aria-describedby="desc-meterSize">
+            <option value='5/8"'>5/8 Inch</option>
+            <option value='3/4"' selected>3/4 Inch</option>
+            <option value='1"'>1 Inch</option>
+            <option value='1 1/2"'>1 1/2 Inch</option>
+            <option value='2"'>2 Inch</option>
+            <option value='10"'>10 Inch</option>
+          </select>
+          <div class="input-desc" id="desc-meterSize">Select the meter size associated with this account</div>
+        </div>
+        <div class="input-group">
+          <label for="usage">Monthly Water Usage (CCF)</label>
+          <input type="number" id="usage" value="17" min="0" step="1" aria-describedby="desc-usage">
+          <div class="input-desc" id="desc-usage">Enter the volume of water used in this particular month</div>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <div class="input-group">
+          <label for="custClass">Customer Class</label>
+          <select id="custClass" aria-describedby="desc-custClass">
+            <option value="sfr" selected>Single Family Residential</option>
+            <option value="condo">Condominium</option>
+            <option value="tp_unr">Trailer Park Unrestricted</option>
+            <option value="tp_res">Trailer Park Restricted</option>
+            <option value="mf_unr">Multi-Family Unrestricted</option>
+            <option value="mf_res">Multi-Family Restricted</option>
+            <option value="irr">Irrigation</option>
+          </select>
+          <div class="input-desc" id="desc-custClass">Choose appropriate customer class</div>
+        </div>
+        <div class="input-group">
+          <label for="month">Month</label>
+          <select id="month" aria-describedby="desc-month">
+            <option value="avg" selected>Average Month</option>
+            <option value="jan">January</option>
+            <option value="feb">February</option>
+            <option value="mar">March</option>
+            <option value="apr">April</option>
+            <option value="may">May</option>
+            <option value="jun">June</option>
+            <option value="jul">July</option>
+            <option value="aug">August</option>
+            <option value="sep">September</option>
+            <option value="oct">October</option>
+            <option value="nov">November</option>
+            <option value="dec">December</option>
+          </select>
+          <div class="input-desc" id="desc-month">This selection determines the average ET0 factor and days of service</div>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <div class="input-group third">
+          <label for="landscape">Landscape Area</label>
+          <input type="number" id="landscape" value="4000" min="0" step="100" aria-describedby="desc-landscape">
+          <div class="input-desc" id="desc-landscape">Enter property area to be irrigated (sq. ft.)</div>
+        </div>
+        <div class="input-group third">
+          <label for="units">Number of Units</label>
+          <input type="number" id="units" value="1" min="1" step="1" aria-describedby="desc-units">
+          <div class="input-desc" id="desc-units">Always 1 for SFR and Condo</div>
+        </div>
+        <div class="input-group third">
+          <label for="hhSize">Household Size</label>
+          <input type="number" id="hhSize" value="4" min="1" step="1" aria-describedby="desc-hhSize">
+          <div class="input-desc" id="desc-hhSize">Always 2 for Multi-Family Restricted and Trailer Park Restricted</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-bar" role="note" aria-label="Important information about multi-family accounts">
+      Multi-Family and Mobile Home Estate Park accounts must also include the number of residences
+      served by the meter (units). The household size should also reflect the number of people in each unit.
+    </div>
+
+    <div class="budget-bar" aria-hidden="true">
+      <span>IWB: <b id="dbgIWB">&mdash;</b> CCF</span><span class="budget-sep">|</span>
+      <span>OWB: <b id="dbgOWB">&mdash;</b> CCF</span><span class="budget-sep">|</span>
+      <span>TWB: <b id="dbgTWB">&mdash;</b> CCF</span><span class="budget-sep">|</span>
+      <span>Tier 3 width: <b id="dbgT3W">&mdash;</b> CCF</span><span class="budget-sep">|</span>
+      <span>Tier 3 ceiling: <b id="dbgT3C">&mdash;</b> CCF</span>
+    </div>
+
+    <div role="status" aria-live="polite" aria-atomic="true" class="sr-only" id="calc-status"></div>
+
+    <div class="charts-section">
+      <h2 class="charts-half-title">Monthly Bill Comparison</h2>
+      <div id="chartComparison" role="img" aria-label="Stacked bar chart comparing current vs. proposed monthly water and sewer charges" style="width:100%;height:400px"></div>
+    </div>
+
+    <div class="table-section" aria-live="polite" aria-atomic="true">
+      <table class="bill-table">
+        <caption class="sr-only">Water and Sewer Bill Comparison: Current vs. Proposed Charges</caption>
+        <thead>
+          <tr>
+            <th scope="col" style="width:44%">YOUR MONTHLY BILL</th>
+            <th scope="col" style="width:18%">Current</th>
+            <th scope="col" style="width:18%">Proposed</th>
+            <th scope="col" style="width:20%" class="change-col">Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- WATER CHARGES -->
+          <tr class="section-header"><th colspan="4" scope="rowgroup">Water Charges</th></tr>
+          <tr>
+            <td class="indent">Fixed Charge</td>
+            <td id="tbl-wFixed-curr"></td>
+            <td id="tbl-wFixed-prop"></td>
+            <td id="tbl-wFixed-chg" class="change-col"></td>
+          </tr>
+          <!-- Flat volume row for Irrigation or zero usage -->
+          <tr id="tbl-vol-row">
+            <td class="indent">Volume Charge</td>
+            <td id="tbl-vol-curr"></td>
+            <td id="tbl-vol-prop"></td>
+            <td id="tbl-vol-chg" class="change-col"></td>
+          </tr>
+          <!-- Tier header + individual tier rows — for tiered classes with usage > 0 -->
+          <tr id="tbl-tier-header" class="hidden-row">
+            <td class="indent" style="font-style:italic;font-size:12px">Volume Charge</td>
+            <td></td><td></td><td class="change-col"></td>
+          </tr>
+          <tr id="tbl-t1-row" class="tier-row hidden-row">
+            <td class="indent2">Tier 1 &ndash; Indoor Efficient</td>
+            <td id="tbl-t1-curr"></td><td id="tbl-t1-prop"></td>
+            <td id="tbl-t1-chg" class="change-col"></td>
+          </tr>
+          <tr id="tbl-t2-row" class="tier-row hidden-row">
+            <td class="indent2">Tier 2 &ndash; Outdoor Efficient</td>
+            <td id="tbl-t2-curr"></td><td id="tbl-t2-prop"></td>
+            <td id="tbl-t2-chg" class="change-col"></td>
+          </tr>
+          <tr id="tbl-t3-row" class="tier-row hidden-row">
+            <td class="indent2">Tier 3 &ndash; Inefficient</td>
+            <td id="tbl-t3-curr"></td><td id="tbl-t3-prop"></td>
+            <td id="tbl-t3-chg" class="change-col"></td>
+          </tr>
+          <tr id="tbl-t4-row" class="tier-row hidden-row">
+            <td class="indent2">Tier 4 &ndash; Excessive</td>
+            <td id="tbl-t4-curr"></td><td id="tbl-t4-prop"></td>
+            <td id="tbl-t4-chg" class="change-col"></td>
+          </tr>
+          <tr class="divider-row"><td colspan="3"><hr/></td><td class="change-col"><hr/></td></tr>
+          <tr class="subtotal-row">
+            <td class="indent">Total Water Bill</td>
+            <td id="tbl-wTot-curr"></td><td id="tbl-wTot-prop"></td>
+            <td id="tbl-wTot-chg" class="change-col"></td>
+          </tr>
+
+          <!-- SEWER CHARGES -->
+          <tr id="tbl-sewer-section" class="section-header"><th colspan="3" scope="rowgroup">Sewer Charges</th><td class="change-col"></td></tr>
+          <tr id="tbl-sewer-fixed-row">
+            <td class="indent">Fixed Charge</td>
+            <td id="tbl-sFix-curr"></td><td id="tbl-sFix-prop"></td>
+            <td id="tbl-sFix-chg" class="change-col"></td>
+          </tr>
+          <tr id="tbl-sewer-divider" class="divider-row"><td colspan="3"><hr/></td><td class="change-col"><hr/></td></tr>
+          <tr id="tbl-sewer-subtotal" class="subtotal-row">
+            <td class="indent">Total Sewer Bill</td>
+            <td id="tbl-sTot-curr"></td><td id="tbl-sTot-prop"></td>
+            <td id="tbl-sTot-chg" class="change-col"></td>
+          </tr>
+
+          <tr><td colspan="4" style="padding:4px 0;border:none"></td></tr>
+
+          <!-- GRAND TOTAL -->
+          <tr class="total-row">
+            <td>Total Monthly Bill</td>
+            <td id="tbl-grand-curr"></td><td id="tbl-grand-prop"></td>
+            <td id="tbl-grand-chg"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer-bar">
+      If you need more assistance with the bill calculator and/or would like to talk with a
+      Customer Service Representative, please call <a href="tel:9498370660">(949) 837-0660</a>.
+    </div>
+  </div>
+
+  <script>
+    // Rate Tables
+    var WATER_SERVICE = {
+      current: {
+        '5/8"':  21.18,
+        '3/4"':  28.98,
+        '1"':    44.58,
+        '1 1/2"': 83.57,
+        '2"':   161.55,
+        '10"': 1595.00
+      },
+      proposed: {
+        '5/8"':  23.21,
+        '3/4"':  31.81,
+        '1"':    49.01,
+        '1 1/2"': 92.02,
+        '2"':   178.04,
+        '10"': 1758.85
+      }
+    };
+    
+    var WATER_CAPITAL = {
+      current: {
+        '5/8"':  8.69,
+        '3/4"':  13.02,
+        '1"':    21.69,
+        '1 1/2"': 43.38,
+        '2"':   86.75,
+        '10"': 1000.00
+      },
+      proposed: {
+        '5/8"':  10.85,
+        '3/4"':  16.28,
+        '1"':    27.12,
+        '1 1/2"': 54.24,
+        '2"':   108.48,
+        '10"': 1105.26
+      }
+    };
+
+    var WATER_COMMODITY = {
+      current:  { tier1: 3.59, tier2: 3.98, tier3: 7.26, tier4:  9.14 },
+      proposed: { tier1: 3.87, tier2: 4.24, tier3: 8.09, tier4: 10.22 }
+    };
+
+    var SEWER_SERVICE = {
+      current:  { sfr: 40.80, mf_res: 19.38, mf_unr: 29.82 },
+      proposed: { sfr: 42.07, mf_res: 19.99, mf_unr: 30.75 }
+    };
+
+    var SEWER_CAPITAL = {
+      current:  { sfr: 13.86, mf_res: 6.59, mf_unr: 10.13 },
+      proposed: { sfr: 17.32, mf_res: 8.23, mf_unr: 12.66 }
+    };
+
+    var ETO_DATA = {
+      avg: { eto: 4.30975, days: 30.41667 },
+      jan: { eto: 2.53, days: 31 }, feb: { eto: 2.74, days: 28 }, mar: { eto: 4.05, days: 31 },
+      apr: { eto: 4.96, days: 30 }, may: { eto: 5.47, days: 31 }, jun: { eto: 5.85, days: 30 },
+      jul: { eto: 6.30, days: 31 }, aug: { eto: 6.30, days: 31 }, sep: { eto: 4.98, days: 30 },
+      oct: { eto: 3.80, days: 31 }, nov: { eto: 2.71, days: 30 }, dec: { eto: 2.03, days: 31 }
+    };
+
+    var CLASS_CFG = {
+      sfr:    { hh: 4, units: 1, minHH: 1, minUnits: 1, sewer: 'sfr',    tiered: true,  hasIndoor: true  },
+      condo:  { hh: 3, units: 1, minHH: 1, minUnits: 1, sewer: 'mf_unr', tiered: true,  hasIndoor: true  },
+      tp_unr: { hh: 3, units: 4, minHH: 1, minUnits: 1, sewer: 'mf_unr', tiered: true,  hasIndoor: true  },
+      tp_res: { hh: 2, units: 4, minHH: 1, minUnits: 1, sewer: 'mf_res', tiered: true,  hasIndoor: true  },
+      mf_unr: { hh: 3, units: 4, minHH: 1, minUnits: 1, sewer: 'mf_unr', tiered: true,  hasIndoor: true  },
+      mf_res: { hh: 2, units: 4, minHH: 1, minUnits: 1, sewer: 'mf_res', tiered: true,  hasIndoor: true  },
+      irr:    { hh: 0, units: 0, minHH: 0, minUnits: 0, sewer: null,     tiered: true,  hasIndoor: false }
+    };
+
+    // Chart Colors
+    var C = {
+      tier1: '#16478E', tier2: '#05835C', tier3: '#d4a843', tier4: '#c94040',
+      wFixed: '#1AB8CE', sFix: '#9c755f'
+    };
+
+    // Constants
+    var GPCD = 55, ETAF = 0.80, GAL_PER_CCF = 748;
+    var cComparison = null;
+
+    // Formatters
+    function fmtDollar(v) { return '$' + v.toFixed(2); }
+
+    function fmtChange(v) {
+      var s = Math.abs(v).toFixed(2);
+      if (v >  0.005) return '+$' + s;
+      if (v < -0.005) return '-$' + s;
+      return '$0.00';
+    }
+
+    function setChange(id, v) {
+      var el = document.getElementById(id);
+      el.textContent = fmtChange(v);
+      el.classList.remove('change-pos', 'change-neg');
+      if (v >  0.005) el.classList.add('change-pos');
+      else if (v < -0.005) el.classList.add('change-neg');
+    }
+
+    function showRow(id, show) {
+      document.getElementById(id).style.display = show ? 'table-row' : 'none';
+    }
+
+    function barLabel(p) {
+      return p.value > 0 ? '$' + p.value.toFixed(2) : '';
+    }
+
+    function makeSeries(name, color, currVal, propVal) {
+      return {
+        name: name,
+        type: 'bar',
+        stack: 'total',
+        barWidth: '45%',
+        data: [+currVal.toFixed(2), +propVal.toFixed(2)],
+        itemStyle: { color: color },
+        label: {
+          show: true,
+          position: 'inside',
+          formatter: barLabel,
+          fontFamily: 'Arial,sans-serif',
+          fontSize: 11,
+          fontWeight: 'bold',
+          color: '#fff',
+          textShadowColor: 'rgba(0,0,0,0.35)',
+          textShadowBlur: 2,
+          minMargin: 4
+        }
+      };
+    }
+
+    function calcCharges(p, meter, cfg, t1u, t2u, t3u, t4u, usage, units) {
+      var wSvc = WATER_SERVICE[p][meter] || 0;
+      var wCap = WATER_CAPITAL[p][meter] || 0;
+      var wFix = wSvc + wCap;
+
+      var t1c = 0, t2c = 0, t3c = 0, t4c = 0, wUsg = 0;
+      if (cfg.tiered) {
+        t1c = t1u * WATER_COMMODITY[p].tier1;
+        t2c = t2u * WATER_COMMODITY[p].tier2;
+        t3c = t3u * WATER_COMMODITY[p].tier3;
+        t4c = t4u * WATER_COMMODITY[p].tier4;
+        wUsg = t1c + t2c + t3c + t4c;
+      } else {
+        wUsg = usage * (WATER_COMMODITY[p].commercial || 0);
+      }
+      
+      var sSvc = cfg.sewer ? (SEWER_SERVICE[p][cfg.sewer] || 0) * units : 0;
+      var sCap = cfg.sewer ? (SEWER_CAPITAL[p][cfg.sewer] || 0) * units : 0;
+      var sFix = sSvc + sCap;
+
+      return { 
+        wFixed: wFix, 
+        wUsage: wUsg, 
+        t1c: t1c, 
+        t2c: t2c, 
+        t3c: t3c, 
+        t4c: t4c, 
+        sFix: sFix, 
+        total: wFix + wUsg + sFix 
+      };
+    }
+
+    // Main Recalculation
+    function recalc() {
+      if (!cComparison) return;
+
+      var cls   = document.getElementById('custClass').value;
+      var cfg   = CLASS_CFG[cls];
+      var meter = document.getElementById('meterSize').value;
+      var usage = parseFloat(document.getElementById('usage').value) || 0;
+      var mo    = ETO_DATA[document.getElementById('month').value];
+      var area  = parseFloat(document.getElementById('landscape').value) || 0;
+      var units = Math.max(cfg.minUnits, Math.floor(parseFloat(document.getElementById('units').value) || 0));
+      var hh    = Math.max(cfg.minHH,    Math.floor(parseFloat(document.getElementById('hhSize').value) || 0));
+
+      var IWB    = cfg.hasIndoor ? Math.ceil(units * hh * GPCD * mo.days / GAL_PER_CCF) : 0;
+      var OWB    = Math.ceil(area * mo.eto * ETAF / 1200);
+      var TWB    = IWB + OWB;
+      var T3W    = Math.ceil(0.3 * TWB);
+      var T3_CEIL = TWB + T3W;
+
+      document.getElementById('dbgIWB').textContent = IWB;
+      document.getElementById('dbgOWB').textContent = OWB;
+      document.getElementById('dbgTWB').textContent = TWB;
+      document.getElementById('dbgT3W').textContent = T3W;
+      document.getElementById('dbgT3C').textContent = T3_CEIL;
+
+      var t1u = 0, t2u = 0, t3u = 0, t4u = 0;
+      if (cfg.tiered) {
+        t1u = Math.min(usage, IWB);
+        t2u = Math.max(0, Math.min(usage, TWB) - IWB);
+        t3u = Math.max(0, Math.min(usage, T3_CEIL) - TWB);
+        t4u = Math.max(0, usage - T3_CEIL);
+      }
+
+      var curr = calcCharges('current',  meter, cfg, t1u, t2u, t3u, t4u, usage, units);
+      var prop = calcCharges('proposed', meter, cfg, t1u, t2u, t3u, t4u, usage, units);
+      var diff     = prop.total - curr.total;
+      var diffSign = diff >= 0 ? '+' : '';
+      var diffPct  = curr.total > 0 ? (diff / curr.total * 100).toFixed(1) : '0.0';
+
+      // Bar Chart
+      var chartSeries = [];
+      var legendData  = [];
+
+      if (cfg.tiered) {
+        if (curr.t1c > 0 || prop.t1c > 0) {
+          chartSeries.push(makeSeries('Tier 1 \u2013 Indoor Efficient',  C.tier1, curr.t1c, prop.t1c));
+          legendData.push('Tier 1 \u2013 Indoor Efficient');
+        }
+        if (curr.t2c > 0 || prop.t2c > 0) {
+          chartSeries.push(makeSeries('Tier 2 \u2013 Outdoor Efficient', C.tier2, curr.t2c, prop.t2c));
+          legendData.push('Tier 2 \u2013 Outdoor Efficient');
+        }
+        if (curr.t3c > 0 || prop.t3c > 0) {
+          chartSeries.push(makeSeries('Tier 3 \u2013 Inefficient', C.tier3, curr.t3c, prop.t3c));
+          legendData.push('Tier 3 \u2013 Inefficient');
+        }
+        if (curr.t4c > 0 || prop.t4c > 0) {
+          chartSeries.push(makeSeries('Tier 4 \u2013 Excessive', C.tier4, curr.t4c, prop.t4c));
+          legendData.push('Tier 4 \u2013 Excessive');
+        }
+        if (chartSeries.length === 0) {
+          chartSeries.push(makeSeries('Tier 1 \u2013 Indoor Efficient', C.tier1, 0, 0));
+          legendData.push('Tier 1 \u2013 Indoor Efficient');
+        }
+      } else {
+        chartSeries.push(makeSeries('Volume Charge', C.tier1, curr.wUsage, prop.wUsage));
+        legendData.push('Volume Charge');
+      }
+
+      chartSeries.push(makeSeries('Water Fixed Charge', C.wFixed, curr.wFixed, prop.wFixed));
+      legendData.push('Water Fixed Charge');
+
+      if (cfg.sewer !== null) {
+        chartSeries.push(makeSeries('Sewer Fixed Charge', C.sFix, curr.sFix, prop.sFix));
+        legendData.push('Sewer Fixed Charge');
+      }
+
+      cComparison.setOption({
+        tooltip: {
+          trigger: 'axis', axisPointer: { type: 'shadow' },
+          formatter: function (params) {
+            var total = 0, rows = '';
+            params.forEach(function (p) {
+              if (p.value > 0) {
+                rows += '<span style="display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle"></span>' +
+                        p.seriesName + ': <b>$' + p.value.toFixed(2) + '</b><br/>';
+                total += p.value;
+              }
+            });
+            return rows + '<hr style="margin:4px 0;border:none;border-top:1px solid #ddd"/><b>Total: $' + total.toFixed(2) + '</b>';
+          },
+          extraCssText: 'font-family:Arial,sans-serif;font-size:12px;line-height:1.8;padding:10px 14px;border-radius:6px;box-shadow:0 3px 12px rgba(0,0,0,0.20);'
+        },
+        legend: {
+          top: 0, itemWidth: 14, itemHeight: 14, type: 'scroll',
+          textStyle: { fontSize: 11, fontFamily: 'Arial,sans-serif', color: '#333' },
+          data: legendData
+        },
+        grid: { left: 64, right: 24, top: 56, bottom: 70 },
+        xAxis: {
+          type: 'category', data: ['Current', 'Proposed'],
+          axisLabel: {
+            fontFamily: 'Arial,sans-serif', fontSize: 12, color: '#333', lineHeight: 20,
+            formatter: function (val) {
+              if (val === 'Current') return '{bold|' + val + '}\n{blue|' + fmtDollar(curr.total) + '}';
+              return '{bold|' + val + '}\n{blue|' + fmtDollar(prop.total) + '}\n{delta|(' + diffSign + diffPct + '%)}';
+            },
+            rich: {
+              bold:  { fontSize: 12, fontWeight: 'bold', color: '#333',    lineHeight: 20 },
+              blue:  { fontSize: 13, fontWeight: 'bold', color: '#16478E', lineHeight: 20 },
+              delta: { fontSize: 11,                     color: '#333',    lineHeight: 18 }
+            }
+          },
+          axisTick: { show: false }, axisLine: { lineStyle: { color: '#c5c9ce' } }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { formatter: '${value}', fontFamily: 'Arial,sans-serif', fontSize: 11, color: '#666' },
+          splitLine: { lineStyle: { color: '#ebebeb' } }
+        },
+        series: chartSeries
+      }, true);
+
+      // Comparison Table
+      document.getElementById('tbl-wFixed-curr').textContent = fmtDollar(curr.wFixed);
+      document.getElementById('tbl-wFixed-prop').textContent = fmtDollar(prop.wFixed);
+      setChange('tbl-wFixed-chg', prop.wFixed - curr.wFixed);
+
+      var anyTierUsage = (t1u + t2u + t3u + t4u) > 0;
+
+      if (cfg.tiered) {
+        showRow('tbl-vol-row', false);
+        showRow('tbl-tier-header', true);
+        showRow('tbl-t1-row', t1u > 0);
+        showRow('tbl-t2-row', t2u > 0);
+        showRow('tbl-t3-row', t3u > 0);
+        showRow('tbl-t4-row', t4u > 0);
+
+        document.getElementById('tbl-t1-curr').textContent = fmtDollar(curr.t1c);
+        document.getElementById('tbl-t1-prop').textContent = fmtDollar(prop.t1c);
+        setChange('tbl-t1-chg', prop.t1c - curr.t1c);
+        document.getElementById('tbl-t2-curr').textContent = fmtDollar(curr.t2c);
+        document.getElementById('tbl-t2-prop').textContent = fmtDollar(prop.t2c);
+        setChange('tbl-t2-chg', prop.t2c - curr.t2c);
+        document.getElementById('tbl-t3-curr').textContent = fmtDollar(curr.t3c);
+        document.getElementById('tbl-t3-prop').textContent = fmtDollar(prop.t3c);
+        setChange('tbl-t3-chg', prop.t3c - curr.t3c);
+        document.getElementById('tbl-t4-curr').textContent = fmtDollar(curr.t4c);
+        document.getElementById('tbl-t4-prop').textContent = fmtDollar(prop.t4c);
+        setChange('tbl-t4-chg', prop.t4c - curr.t4c);
+
+        if (!anyTierUsage) {
+          showRow('tbl-tier-header', false);
+          showRow('tbl-vol-row', true);
+          document.getElementById('tbl-vol-curr').textContent = fmtDollar(0);
+          document.getElementById('tbl-vol-prop').textContent = fmtDollar(0);
+          setChange('tbl-vol-chg', 0);
+        }
+      } else {
+        showRow('tbl-vol-row', true);
+        showRow('tbl-tier-header', false);
+        showRow('tbl-t1-row', false); showRow('tbl-t2-row', false);
+        showRow('tbl-t3-row', false); showRow('tbl-t4-row', false);
+        document.getElementById('tbl-vol-curr').textContent = fmtDollar(curr.wUsage);
+        document.getElementById('tbl-vol-prop').textContent = fmtDollar(prop.wUsage);
+        setChange('tbl-vol-chg', prop.wUsage - curr.wUsage);
+      }
+
+      var wTotCurr = curr.wFixed + curr.wUsage;
+      var wTotProp = prop.wFixed + prop.wUsage;
+      document.getElementById('tbl-wTot-curr').textContent = fmtDollar(wTotCurr);
+      document.getElementById('tbl-wTot-prop').textContent = fmtDollar(wTotProp);
+      setChange('tbl-wTot-chg', wTotProp - wTotCurr);
+
+      var hasSewer = cfg.sewer !== null;
+      showRow('tbl-sewer-section',    hasSewer);
+      showRow('tbl-sewer-fixed-row',  hasSewer);
+      showRow('tbl-sewer-divider',    hasSewer);
+      showRow('tbl-sewer-subtotal',   hasSewer);
+      if (hasSewer) {
+        document.getElementById('tbl-sFix-curr').textContent = fmtDollar(curr.sFix);
+        document.getElementById('tbl-sFix-prop').textContent = fmtDollar(prop.sFix);
+        setChange('tbl-sFix-chg', prop.sFix - curr.sFix);
+        document.getElementById('tbl-sTot-curr').textContent = fmtDollar(curr.sFix);
+        document.getElementById('tbl-sTot-prop').textContent = fmtDollar(prop.sFix);
+        setChange('tbl-sTot-chg', prop.sFix - curr.sFix);
+      }
+
+      document.getElementById('tbl-grand-curr').textContent = fmtDollar(curr.total);
+      document.getElementById('tbl-grand-prop').textContent = fmtDollar(prop.total);
+      setChange('tbl-grand-chg', prop.total - curr.total);
+
+      // Update chart aria-label with current values
+      document.getElementById('chartComparison').setAttribute('aria-label',
+        'Stacked bar chart comparing current vs. proposed monthly bill. ' +
+        'Current: ' + fmtDollar(curr.total) + '. Proposed: ' + fmtDollar(prop.total) + '.');
+
+      // Announce calculation results to screen readers
+      document.getElementById('calc-status').textContent =
+        'Calculation updated. Current bill: ' + fmtDollar(curr.total) +
+        '. Proposed bill: ' + fmtDollar(prop.total) + '.';
+    }
+
+    function applyClassDefaults(cls) {
+      var cfg     = CLASS_CFG[cls];
+      var unitsEl = document.getElementById('units');
+      var hhEl    = document.getElementById('hhSize');
+      unitsEl.value = cfg.units;
+      hhEl.value    = cfg.hh;
+      unitsEl.min   = cfg.minUnits;
+      hhEl.min      = cfg.minHH;
+    }
+
+    // Event Listeners
+    document.getElementById('custClass').addEventListener('change', function () {
+      applyClassDefaults(this.value);
+      recalc();
+    });
+    document.querySelectorAll('select, input').forEach(function (el) {
+      if (el.id === 'custClass') return;
+      el.addEventListener('change', recalc);
+      el.addEventListener('input', recalc);
+    });
+    window.addEventListener('resize', function () { if (cComparison) cComparison.resize(); });
+
+    // Mobile chart resize
+    (function () {
+      if (window.innerWidth > 768) return;
+      function resizeMobileCharts() {
+        document.querySelectorAll('[_echarts_instance_]').forEach(function (el) {
+          el.style.width = '100%';
+          var inst = echarts.getInstanceByDom(el);
+          if (inst) inst.resize();
+        });
+      }
+      setTimeout(resizeMobileCharts, 1000);
+      setTimeout(resizeMobileCharts, 3000);
+      window.addEventListener('orientationchange', function () { setTimeout(resizeMobileCharts, 300); });
+    })();
+
+    // Escape key postMessage for iframe contexts
+    (function () {
+      var parentOrigin = window.location.origin;
+      try {
+        if (document.referrer) {
+          var refUrl = new URL(document.referrer);
+          if (refUrl.origin) { parentOrigin = refUrl.origin; }
+        }
+      } catch (_e) {}
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') window.parent.postMessage('canvas-escape', parentOrigin);
+      });
+    })();
+
+    // Initial Render
+    (function waitForECharts() {
+      if (typeof echarts !== 'undefined') {
+        cComparison = echarts.init(document.getElementById('chartComparison'));
+        recalc();
+      } else {
+        setTimeout(waitForECharts, 25);
+      }
+    })();
+  </script>
+</body>
+</html>
